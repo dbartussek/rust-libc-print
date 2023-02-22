@@ -12,4 +12,3 @@ readme = "README.md"
 name = "libc_print"
 
 [dependencies]
-libc = { version = "0.2.139", default-features = false }

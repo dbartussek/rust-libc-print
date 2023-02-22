@@ -44,13 +44,17 @@
 #![allow(unused)]
 #![warn(unsafe_op_in_unsafe_fn)]
 
-use core::{convert::TryFrom, file, line, stringify};
+use core::{
+    convert::TryFrom,
+    ffi::{c_int, c_uint, c_void},
+    file, line, stringify,
+};
 
-/// This forces a "C" library linkage
-#[cfg(not(windows))]
-#[link(name = "c")]
-mod c {
-    extern "C" {}
+extern "C" {
+    #[cfg(not(windows))]
+    pub fn write(fd: c_int, buf: *const c_void, count: usize) -> isize;
+    #[cfg(windows)]
+    pub fn write(fd: c_int, buf: *const c_void, count: c_uint) -> c_int;
 }
 
 // These constants are used by the macros but we don't want to expose
@@ -114,7 +118,7 @@ pub fn __libc_println(handle: i32, msg: &str) -> core::fmt::Result {
 #[cfg(not(windows))]
 unsafe fn libc_write(handle: i32, bytes: &[u8]) -> Option<usize> {
     usize::try_from(unsafe {
-        libc::write(
+        write(
             handle,
             bytes.as_ptr().cast::<core::ffi::c_void>(),
             bytes.len(),
@@ -126,10 +130,10 @@ unsafe fn libc_write(handle: i32, bytes: &[u8]) -> Option<usize> {
 #[cfg(windows)]
 unsafe fn libc_write(handle: i32, bytes: &[u8]) -> Option<usize> {
     usize::try_from(unsafe {
-        libc::write(
+        write(
             handle,
             bytes.as_ptr().cast::<core::ffi::c_void>(),
-            libc::c_uint::try_from(bytes.len()).unwrap_or(libc::c_uint::MAX),
+            c_uint::try_from(bytes.len()).unwrap_or(c_uint::MAX),
         )
     })
     .ok()
